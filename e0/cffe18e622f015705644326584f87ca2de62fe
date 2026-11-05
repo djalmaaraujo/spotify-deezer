@@ -1,0 +1,14 @@
+index.html
+  h_4716746d570273 1-529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0cffe18e622f015705644326584f87ca2de62fe",
+  "prompts": {},
+  "humans": {
+    "h_4716746d570273": {
+      "author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
