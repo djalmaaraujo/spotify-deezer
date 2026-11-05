@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotify → Deezer</title>
+<meta name="description" content="Cole um link do Spotify e encontre a mesma música na Deezer.">
+<meta name="theme-color" content="#121212">
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #111;
+    --muted: #666;
+    --border: #e2e2e6;
+    --accent: #a238ff;
+    --accent-2: #1db954;
+    --danger: #d93025;
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0f12;
+      --card: #1a1a20;
+      --text: #f2f2f5;
+      --muted: #9a9aa5;
+      --border: #2b2b34;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h1 .s { color: var(--accent-2); }
+  h1 .d { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  form { display: flex; flex-direction: column; gap: 10px; }
+  .input-row { display: flex; gap: 8px; }
+  input[type=url], input[type=text] {
+    flex: 1; min-width: 0;
+    font-size: 16px; padding: 14px 14px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card); color: var(--text);
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button, .btn {
+    appearance: none; border: 0; cursor: pointer;
+    font: inherit; font-weight: 600;
+    padding: 13px 16px; border-radius: 12px;
+    background: var(--accent); color: #fff;
+    text-decoration: none; text-align: center;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  button:disabled { opacity: .6; cursor: default; }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .status { margin: 18px 0 0; color: var(--muted); min-height: 1.4em; }
+  .status.error { color: var(--danger); }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px;
+    border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; margin-top: 16px;
+  }
+  .source { display: flex; gap: 12px; align-items: center; }
+  .source img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex: none; }
+  .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .t { font-weight: 700; }
+  .a { color: var(--muted); }
+  .result { display: flex; gap: 14px; }
+  .result img { width: 110px; height: 110px; border-radius: 10px; object-fit: cover; flex: none; }
+  .result .info { min-width: 0; }
+  .result .t { font-size: 1.1rem; }
+  .meta { font-size: .9rem; color: var(--muted); }
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .actions > * { flex: 1 1 140px; }
+  audio { width: 100%; margin-top: 12px; }
+  .badge { display: inline-block; font-size: .75rem; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2); margin-bottom: 6px; }
+  .badge.warn { background: color-mix(in srgb, #f5a524 20%, transparent); color: #c27c00; }
+  .cands { list-style: none; padding: 0; margin: 8px 0 0; }
+  .cands li { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+  .cands li:first-child { border-top: 0; }
+  .cands img { width: 48px; height: 48px; border-radius: 6px; flex: none; }
+  .cands .info { flex: 1; min-width: 0; }
+  .cands .t, .cands .a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cands button { padding: 9px 12px; font-size: .9rem; }
+  .note { font-size: .85rem; color: var(--muted); margin-top: 10px; }
+  footer { margin-top: 36px; font-size: .8rem; color: var(--muted); text-align: center; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="s">Spotify</span> → <span class="d">Deezer</span></h1>
+  <p class="sub">Cole o link de uma música do Spotify e abra a mesma faixa na Deezer.</p>
+
+  <form id="form" autocomplete="off">
+    <div class="input-row">
+      <input id="url" type="text" inputmode="url" placeholder="https://open.spotify.com/track/…" aria-label="Link do Spotify">
+      <button type="button" id="paste" class="btn-ghost" hidden>Colar</button>
+    </div>
+    <button type="submit" id="go">Encontrar na Deezer</button>
+  </form>
+
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <section id="sourceCard" class="card" hidden>
+    <div class="label">No Spotify</div>
+    <div class="source" style="margin-top:8px">
+      <img id="srcCover" alt="">
+      <div>
+        <div class="t" id="srcTitle"></div>
+        <div class="a" id="srcArtist"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="resultCard" class="card" hidden></section>
+
+  <footer>Usa o oEmbed do Spotify e a API pública da Deezer. Sem login, sem chaves.</footer>
+</main>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO
+   ========================================================= */
+
+// Proxies CORS públicos, testados em ordem. {url} é substituído pelo endereço (já codificado).
+// (corsproxy.io passou a exigir chave em 2026, por isso não está aqui.)
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url={url}',
+  'https://api.codetabs.com/v1/proxy?quest={url}',
+];
+
+const SCORE_FOUND = 0.85;      // a partir daqui, mostra como "Encontrado"
+const SCORE_LIKELY = 0.6;      // abaixo disso, mostra só candidatos
+const TIMEOUT_MS = 10000;
+const MAX_CANDIDATES = 5;
+
+/* =========================================================
+   UTILITÁRIOS
+   ========================================================= */
+
+const $ = (id) => document.getElementById(id);
+
+function withTimeout(promise, ms = TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+  ]);
+}
+
+async function fetchText(url) {
+  const res = await withTimeout(fetch(url));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.text();
+}
+
+// Busca uma URL passando pelos proxies, um de cada vez, até um responder.
+async function fetchViaProxy(url, validate = () => true) {
+  for (const p of CORS_PROXIES) {
+    try {
+      const text = await fetchText(p.replace('{url}', encodeURIComponent(url)));
+      if (validate(text)) return text;
+    } catch (e) { /* tenta o próximo */ }
+  }
+  throw new Error('Nenhum proxy respondeu');
+}
+
+let jsonpCounter = 0;
+// JSONP: a API da Deezer não libera CORS, mas aceita output=jsonp.
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = '__dz' + (++jsonpCounter) + '_' + Date.now();
+    const script = document.createElement('script');
+    const cleanup = () => { delete window[cb]; script.remove(); clearTimeout(timer); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, TIMEOUT_MS);
+    window[cb] = (data) => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error('Falha ao carregar a Deezer')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'output=jsonp&callback=' + cb;
+    document.head.appendChild(script);
+  });
+}
+
+// Normaliza títulos/artistas para comparação.
+function normalize(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\((feat|ft|with|com|part)\.?[^)]*\)/g, ' ')
+    .replace(/\[(feat|ft|with|com|part)\.?[^\]]*\]/g, ' ')
+    .replace(/\s-\s.*(remaster|ao vivo|live|version|versao|edit|mix|mono|stereo|acustic|acoustic).*$/g, ' ')
+    .replace(/\((.*?(remaster|ao vivo|live|version|versao|radio edit|mono|stereo).*?)\)/g, ' ')
+    .replace(/&/g, ' e ')
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Similaridade de Dice por bigramas (0 a 1).
+function similarity(a, b) {
+  a = normalize(a); b = normalize(b);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+  const grams = (s) => { const m = new Map(); for (let i = 0; i < s.length - 1; i++) { const g = s.slice(i, i + 2); m.set(g, (m.get(g) || 0) + 1); } return m; };
+  const A = grams(a), B = grams(b);
+  let inter = 0;
+  for (const [g, n] of A) inter += Math.min(n, B.get(g) || 0);
+  return (2 * inter) / (a.length - 1 + b.length - 1);
+}
+
+// Similaridade de artistas: o melhor par entre os artistas do Spotify e os da Deezer.
+function artistSimilarity(spArtists, dzTrack) {
+  if (!spArtists.length) return null;
+  const dzNames = [dzTrack.artist?.name, ...(dzTrack.contributors || []).map(c => c.name)].filter(Boolean);
+  let best = 0;
+  for (const s of spArtists) for (const d of dzNames) best = Math.max(best, similarity(s, d));
+  // também compara a string inteira (ex.: "Artista A, Artista B")
+  best = Math.max(best, similarity(spArtists.join(' '), dzNames.join(' ')));
+  return best;
+}
+
+function fmtDuration(sec) {
+  if (!sec && sec !== 0) return '';
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* =========================================================
+   SPOTIFY
+   ========================================================= */
+
+const TRACK_RE = /(?:open\.spotify\.com\/(?:intl-[a-z-]+\/)?(?:embed\/)?track\/|spotify:track:)([A-Za-z0-9]{22})/i;
+const OTHER_RE = /open\.spotify\.com\/(?:intl-[a-z-]+\/)?(album|playlist|artist|episode|show)\//i;
+const SHORT_RE = /^https?:\/\/(spotify\.link|spoti\.fi)\//i;
+
+// Extrai o ID da faixa; resolve links curtos (spotify.link) via proxy.
+async function resolveTrackId(input) {
+  const raw = input.trim();
+  const m = raw.match(TRACK_RE);
+  if (m) return m[1];
+
+  const other = raw.match(OTHER_RE);
+  if (other) {
+    const tipos = { album: 'álbum', playlist: 'playlist', artist: 'artista', episode: 'episódio', show: 'podcast' };
+    throw new Error(`Esse link é de ${tipos[other[1].toLowerCase()]}. Por enquanto só funciona com links de música.`);
+  }
+
+  if (SHORT_RE.test(raw)) {
+    setStatus('Abrindo o link curto do Spotify…', true);
+    const html = await fetchViaProxy(raw, t => TRACK_RE.test(t));
+    const mm = html.match(TRACK_RE);
+    if (mm) return mm[1];
+  }
+
+  throw new Error('Não reconheci esse link. Cole um link de música do Spotify (open.spotify.com/track/…).');
+}
+
+// Metadados do Spotify sem chave: oEmbed (título, capa) + página/embed via proxy (artista, duração).
+async function getSpotifyMeta(id) {
+  const trackUrl = 'https://open.spotify.com/track/' + id;
+  const meta = { id, url: trackUrl, title: '', artists: [], album: '', duration: null, cover: '' };
+
+  // 1) oEmbed — tenta direto e, se falhar, pelo proxy
+  const oembedUrl = 'https://open.spotify.com/oembed?url=' + encodeURIComponent(trackUrl);
+  try {
+    let data;
+    try { data = JSON.parse(await fetchText(oembedUrl)); }
+    catch { data = JSON.parse(await fetchViaProxy(oembedUrl, t => t.trim().startsWith('{'))); }
+    meta.title = data.title || '';
+    meta.cover = data.thumbnail_url || '';
+  } catch (e) { /* segue para a página */ }
+
+  // 2) Página do embed (tem JSON com artistas e duração) e, se falhar, a página normal (meta tags)
+  try {
+    const html = await fetchViaProxy('https://open.spotify.com/embed/track/' + id, t => t.includes('__NEXT_DATA__'));
+    parseEmbed(html, meta);
+  } catch (e) { /* tenta a página normal */ }
+
+  if (!meta.artists.length) {
+    try {
+      const html = await fetchViaProxy(trackUrl, t => t.includes('og:'));
+      parseTrackPage(html, meta);
+    } catch (e) { /* fica só com o oEmbed */ }
+  }
+
+  if (!meta.title) throw new Error('Não consegui ler os dados dessa música no Spotify. Confira o link e tente de novo.');
+  return meta;
+}
+
+function parseEmbed(html, meta) {
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return;
+  let data; try { data = JSON.parse(m[1]); } catch { return; }
+  // Procura a entidade da faixa em qualquer lugar do JSON
+  const ent = findDeep(data, o => o && typeof o === 'object' && (o.type === 'track' || o.uri?.startsWith?.('spotify:track:')) && (o.name || o.title));
+  if (!ent) return;
+  meta.title = meta.title || ent.name || ent.title || '';
+  const artists = ent.artists || (ent.subtitle ? ent.subtitle.split(/,\s*/).map(name => ({ name })) : []);
+  meta.artists = artists.map(a => a.name).filter(Boolean);
+  const dur = ent.duration ?? ent.duration_ms;
+  if (dur) meta.duration = dur > 10000 ? dur / 1000 : dur;
+  if (!meta.cover) {
+    const img = ent.visualIdentity?.image?.[0]?.url || ent.coverArt?.sources?.[0]?.url;
+    if (img) meta.cover = img;
+  }
+}
+
+function findDeep(obj, pred, depth = 0) {
+  if (depth > 12 || !obj || typeof obj !== 'object') return null;
+  if (pred(obj)) return obj;
+  for (const k in obj) {
+    const r = findDeep(obj[k], pred, depth + 1);
+    if (r) return r;
+  }
+  return null;
+}
+
+function parseTrackPage(html, meta) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const get = (sel) => doc.querySelector(sel)?.getAttribute('content') || '';
+  const ogTitle = get('meta[property="og:title"]');
+  const ogDesc = get('meta[property="og:description"]');      // "Artista · Álbum · Música · 2020"
+  const musician = get('meta[name="music:musician_description"]');
+  const dur = get('meta[name="music:duration"]');
+  meta.title = meta.title || ogTitle;
+  if (musician) meta.artists = musician.split(/,\s*/);
+  else if (ogDesc.includes('·')) meta.artists = ogDesc.split('·')[0].split(/,\s*/).map(s => s.trim()).filter(Boolean);
+  if (ogDesc.includes('·')) meta.album = ogDesc.split('·')[1]?.trim() || '';
+  if (dur && !meta.duration) meta.duration = Number(dur);
+  if (!meta.cover) meta.cover = get('meta[property="og:image"]');
+}
+
+/* =========================================================
+   DEEZER
+   ========================================================= */
+
+async function deezerSearch(q) {
+  const data = await jsonp('https://api.deezer.com/search?limit=25&q=' + encodeURIComponent(q));
+  if (data?.error) throw new Error(data.error.message || 'Erro na Deezer');
+  return data?.data || [];
+}
+
+async function findOnDeezer(meta) {
+  const cleanTitle = normalize(meta.title) || meta.title;
+  const artist = meta.artists[0] || '';
+  const queries = [];
+  // Obs.: a busca combinada artist:"" track:"" da Deezer está retornando vazio; busca livre funciona.
+  if (artist) queries.push(`${artist} ${cleanTitle}`);
+  queries.push(`track:"${meta.title}"`);
+  if (cleanTitle !== normalize(meta.title) || cleanTitle !== meta.title) queries.push(cleanTitle);
+
+  const seen = new Map();
+  for (const q of queries) {
+    let results = [];
+    try { results = await deezerSearch(q); } catch (e) { if (!seen.size && q === queries[queries.length - 1]) throw e; }
+    for (const t of results) if (!seen.has(t.id)) seen.set(t.id, t);
+    const ranked = rank([...seen.values()], meta);
+    if (ranked[0] && ranked[0].score >= SCORE_FOUND) return ranked;
+  }
+  return rank([...seen.values()], meta);
+}
+
+function rank(tracks, meta) {
+  return tracks.map(t => {
+    const sTitle = Math.max(similarity(meta.title, t.title), similarity(meta.title, t.title_short));
+    const sArtist = artistSimilarity(meta.artists, t);
+    let score = sArtist === null ? sTitle * 0.75 : sTitle * 0.55 + sArtist * 0.45;
+    if (meta.duration && t.duration) {
+      const diff = Math.abs(meta.duration - t.duration);
+      if (diff <= 3) score += 0.08;
+      else if (diff > 20) score -= 0.08;
+    }
+    if (sArtist === null) score = Math.min(score, SCORE_FOUND - 0.01); // sem artista, nunca dá certeza
+    return { track: t, score: Math.max(0, Math.min(1, score)) };
+  }).sort((a, b) => b.score - a.score || (b.track.rank || 0) - (a.track.rank || 0));
+}
+
+/* =========================================================
+   INTERFACE
+   ========================================================= */
+
+function setStatus(msg, loading = false, error = false) {
+  const el = $('status');
+  el.className = 'status' + (error ? ' error' : '');
+  el.innerHTML = (loading ? '<span class="spinner"></span>' : '') + escapeHtml(msg);
+}
+
+function showSource(meta) {
+  $('srcCover').src = meta.cover || '';
+  $('srcCover').hidden = !meta.cover;
+  $('srcTitle').textContent = meta.title;
+  $('srcArtist').textContent = meta.artists.length ? meta.artists.join(', ') : 'Artista não identificado';
+  $('sourceCard').hidden = false;
+}
+
+function trackDetails(t) {
+  return [t.album?.title, fmtDuration(t.duration)].filter(Boolean).map(escapeHtml).join(' · ');
+}
+
+function renderMatch(t, sure) {
+  const link = 'https://www.deezer.com/track/' + t.id;
+  const card = $('resultCard');
+  card.innerHTML = `
+    <span class="badge ${sure ? '' : 'warn'}">${sure ? 'Encontrado na Deezer' : 'Provável correspondência'}</span>
+    <div class="result">
+      <img src="${escapeHtml(t.album?.cover_medium || '')}" alt="Capa">
+      <div class="info">
+        <div class="t">${escapeHtml(t.title)}</div>
+        <div class="a">${escapeHtml(t.artist?.name)}</div>
+        <div class="meta">${trackDetails(t)}</div>
+      </div>
+    </div>
+    ${t.preview ? `<audio controls preload="none" src="${escapeHtml(t.preview)}"></audio>` : ''}
+    <div class="actions">
+      <a class="btn" href="${link}" target="_blank" rel="noopener">Abrir na Deezer</a>
+      <button type="button" class="btn-ghost" id="copyBtn">Copiar link</button>
+    </div>`;
+  card.hidden = false;
+  $('copyBtn').onclick = async () => {
+    try { await navigator.clipboard.writeText(link); $('copyBtn').textContent = 'Copiado!'; }
+    catch { prompt('Copie o link:', link); }
+  };
+}
+
+function renderCandidates(ranked, reason) {
+  const card = $('resultCard');
+  const items = ranked.slice(0, MAX_CANDIDATES).map((r, i) => `
+    <li>
+      <img src="${escapeHtml(r.track.album?.cover_small || '')}" alt="">
+      <div class="info">
+        <div class="t">${escapeHtml(r.track.title)}</div>
+        <div class="a">${escapeHtml(r.track.artist?.name)} · ${trackDetails(r.track)}</div>
+      </div>
+      <button type="button" data-i="${i}">Essa</button>
+    </li>`).join('');
+  card.innerHTML = `
+    <span class="badge warn">Escolha a versão certa</span>
+    <div class="note" style="margin-top:0">${escapeHtml(reason)}</div>
+    <ul class="cands">${items}</ul>`;
+  card.hidden = false;
+  card.querySelectorAll('button[data-i]').forEach(b => {
+    b.onclick = () => { renderMatch(ranked[+b.dataset.i].track, true); setStatus(''); };
+  });
+}
+
+async function run(input) {
+  $('resultCard').hidden = true;
+  $('sourceCard').hidden = true;
+  if (!input.trim()) { setStatus('Cole um link do Spotify primeiro.', false, true); return; }
+  $('go').disabled = true;
+  try {
+    setStatus('Lendo a música no Spotify…', true);
+    const id = await resolveTrackId(input);
+    const meta = await getSpotifyMeta(id);
+    showSource(meta);
+
+    // atualiza a URL para poder compartilhar
+    const share = new URL(location.href);
+    share.searchParams.set('url', meta.url);
+    history.replaceState(null, '', share);
+
+    setStatus('Procurando na Deezer…', true);
+    const ranked = await findOnDeezer(meta);
+
+    if (!ranked.length) {
+      setStatus('Não encontrei essa música na Deezer. Talvez ela não esteja disponível lá.', false, true);
+      return;
+    }
+    const best = ranked[0];
+    const noArtist = !meta.artists.length;
+    if (best.score >= SCORE_FOUND) {
+      renderMatch(best.track, true);
+      setStatus('');
+    } else if (best.score >= SCORE_LIKELY && !noArtist && (ranked.length === 1 || best.score - ranked[1].score > 0.1)) {
+      renderMatch(best.track, false);
+      setStatus('Não tenho 100% de certeza. Confira pela capa e pela prévia.');
+    } else {
+      renderCandidates(ranked, noArtist
+        ? 'Não consegui ler o nome do artista no Spotify, então busquei só pelo título. Compare as capas com a de cima.'
+        : 'Achei algumas opções parecidas. Compare com a capa do Spotify acima.');
+      setStatus('');
+    }
+  } catch (e) {
+    const msg = e.message === 'timeout' ? 'Demorou demais para responder. Verifique a conexão e tente de novo.' : e.message;
+    setStatus(msg, false, true);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+$('form').addEventListener('submit', (ev) => { ev.preventDefault(); run($('url').value); });
+
+// Botão "Colar" (só aparece onde a API existe)
+if (navigator.clipboard?.readText) {
+  $('paste').hidden = false;
+  $('paste').onclick = async () => {
+    try {
+      const txt = await navigator.clipboard.readText();
+      $('url').value = txt;
+      if (TRACK_RE.test(txt) || SHORT_RE.test(txt.trim())) run(txt);
+    } catch { $('url').focus(); }
+  };
+}
+
+// Se abrir com ?url=..., processa automaticamente (também aceita compartilhamento via ?text=)
+(() => {
+  const p = new URLSearchParams(location.search);
+  const u = p.get('url') || p.get('text') || '';
+  const m = u.match(/https?:\/\/\S+|spotify:track:\S+/);
+  if (m) { $('url').value = m[0]; run(m[0]); }
+})();
+</script>
+</body>
+</html>
